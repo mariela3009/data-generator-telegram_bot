@@ -7,6 +7,7 @@ export interface ColumnSchema {
   defaultValue?: string | null;
   foreignKey?: { table: string; column: string } | null;
   maxLength?: number | null;
+  maxId?: number;
 }
 
 export interface TableSchema {

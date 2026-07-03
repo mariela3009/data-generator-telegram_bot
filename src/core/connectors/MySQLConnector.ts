@@ -63,6 +63,17 @@ export class MySQLConnector implements BaseConnector {
       // Find primary keys
       const primaryKeys = columns.filter(c => c.isPrimaryKey).map(c => c.name);
 
+      for (const pkCol of primaryKeys) {
+        try {
+          const [maxRow] = await this.connection.execute(`SELECT MAX(${pkCol}) as m FROM ${tableName}`);
+          const val = (maxRow as any)[0].m;
+          if (typeof val === 'number') {
+            const col = columns.find(c => c.name === pkCol);
+            if (col) col.maxId = val;
+          }
+        } catch(e) {}
+      }
+
       // Foreign keys
       const [fkRows] = await this.connection.execute(`
         SELECT column_name, referenced_table_name, referenced_column_name 

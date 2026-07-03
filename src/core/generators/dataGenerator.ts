@@ -98,7 +98,7 @@ export class DataGenerator {
         if (col.dataType && col.dataType.toLowerCase().includes('uuid')) {
           return () => this.fake.string.uuid();
         }
-        pkGenCounters[col.name] = 1;
+        pkGenCounters[col.name] = (col.maxId || 0) + 1;
         return (i: number) => pkGenCounters[col.name] + i;
       }
       if (col.foreignKey) {

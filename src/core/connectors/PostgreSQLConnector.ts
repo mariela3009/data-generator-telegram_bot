@@ -79,6 +79,19 @@ export class PostgreSQLConnector implements BaseConnector {
         maxLength: c.character_maximum_length
       }));
 
+      for (const pkCol of primaryKeys) {
+        try {
+          const maxRes = await this.client.query(`SELECT MAX("${pkCol}") as m FROM "${tableName}"`);
+          if (maxRes.rows[0].m !== null) {
+            const val = parseInt(maxRes.rows[0].m, 10);
+            if (!isNaN(val)) {
+              const col = columns.find(c => c.name === pkCol);
+              if (col) col.maxId = val;
+            }
+          }
+        } catch(e) {}
+      }
+
       // Foreign keys
       const fkRes = await this.client.query(`
         SELECT

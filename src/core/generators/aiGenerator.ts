@@ -47,6 +47,7 @@ export async function generateSeedDataForDatabase(
       if (col.isUnique) constraints.push("UNIQUE");
       if (col.foreignKey) constraints.push(`FOREIGN KEY -> ${col.foreignKey.table}.${col.foreignKey.column}`);
       if (col.maxLength) constraints.push(`MAX LENGTH = ${col.maxLength}`);
+      if (col.maxId !== undefined) constraints.push(`MAX ID ACTUAL = ${col.maxId}`);
       
       if (constraints.length > 0) {
         info += ` (${constraints.join(", ")})`;
@@ -69,7 +70,7 @@ export async function generateSeedDataForDatabase(
     `4. ANALIZA LOS NOMBRES de las tablas y columnas para inferir QUÉ tipo de datos deberían contener.\n` +
     `5. NO uses textos genéricos tipo 'Lorem Ipsum'.\n` +
     `6. Los datos entre tablas deben ser COHERENTES.\n` +
-    `7. Para PKs usa valores SIMPLES consecutivos (1, 2, 3...) EXCEPTO si el tipo de dato es 'uuid', en cuyo caso debes generar UUIDs reales.\n` +
+    `7. Para PKs numéricas usa valores consecutivos EMPEZANDO estrictamente desde el (MAX ID ACTUAL + 1) si se proporciona, de lo contrario empieza en 1. EXCEPTO si el tipo de dato es 'uuid', en cuyo caso genera UUIDs reales.\n` +
     `8. NO incluyas markdown (como \`\`\`json) en tu respuesta, SOLO el JSON puro.\n`;
 
   if (prompt) {

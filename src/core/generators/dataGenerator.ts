@@ -95,6 +95,9 @@ export class DataGenerator {
 
     const colGenerators = tableSchema.columns.map(col => {
       if (col.isPrimaryKey) {
+        if (col.dataType && col.dataType.toLowerCase().includes('uuid')) {
+          return () => this.fake.string.uuid();
+        }
         pkGenCounters[col.name] = 1;
         return (i: number) => pkGenCounters[col.name] + i;
       }
@@ -102,6 +105,9 @@ export class DataGenerator {
         const fkTable = col.foreignKey.table;
         if (pkCaches[fkTable] && pkCaches[fkTable].length > 0) {
           return () => this.fake.helpers.arrayElement(pkCaches[fkTable]);
+        }
+        if (col.dataType && col.dataType.toLowerCase().includes('uuid')) {
+          return () => this.fake.string.uuid();
         }
         return () => 1; // Fallback
       }

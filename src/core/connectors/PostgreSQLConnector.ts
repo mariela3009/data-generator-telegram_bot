@@ -137,7 +137,7 @@ export class PostgreSQLConnector implements BaseConnector {
         const colPlaceholders = columns.map((_, i) => '$' + (i + 1)).join(', ');
         const quotedTableName = `"${tableName}"`;
         const quotedColumns = columns.map(c => `"${c}"`).join(', ');
-        const sql = `INSERT INTO ${quotedTableName} (${quotedColumns}) VALUES (${colPlaceholders})`;
+        const sql = `INSERT INTO ${quotedTableName} (${quotedColumns}) VALUES (${colPlaceholders}) ON CONFLICT DO NOTHING`;
 
         for (const row of rows) {
           await this.client.query(sql, row);

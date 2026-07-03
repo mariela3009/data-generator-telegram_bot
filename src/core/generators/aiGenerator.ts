@@ -69,7 +69,7 @@ export async function generateSeedDataForDatabase(
     `4. ANALIZA LOS NOMBRES de las tablas y columnas para inferir QUÉ tipo de datos deberían contener.\n` +
     `5. NO uses textos genéricos tipo 'Lorem Ipsum'.\n` +
     `6. Los datos entre tablas deben ser COHERENTES.\n` +
-    `7. Para PKs usa valores SIMPLES consecutivos: 1, 2, 3, 4...\n` +
+    `7. Para PKs usa valores SIMPLES consecutivos (1, 2, 3...) EXCEPTO si el tipo de dato es 'uuid', en cuyo caso debes generar UUIDs reales.\n` +
     `8. NO incluyas markdown (como \`\`\`json) en tu respuesta, SOLO el JSON puro.\n`;
 
   if (prompt) {

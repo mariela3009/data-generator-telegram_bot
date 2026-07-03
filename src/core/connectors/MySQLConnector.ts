@@ -110,7 +110,7 @@ export class MySQLConnector implements BaseConnector {
         // Batch inserts in chunks of 1000
         const CHUNK_SIZE = 1000;
         const colPlaceholders = columns.map(() => '?').join(', ');
-        const sql = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${colPlaceholders})`;
+        const sql = `INSERT IGNORE INTO ${tableName} (${columns.join(', ')}) VALUES (${colPlaceholders})`;
 
         for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
           const chunk = rows.slice(i, i + CHUNK_SIZE);

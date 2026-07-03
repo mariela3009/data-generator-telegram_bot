@@ -41,8 +41,12 @@ export class DataGenerator {
 
     if (useAi) {
       console.log("Generating AI Seeds...");
-      // This will throw if AI fails, which will be caught by the bot route handler
-      aiSeeds = await generateSeedDataForDatabase(schema, sortedTableNames, prompt, apiKey);
+      try {
+        aiSeeds = await generateSeedDataForDatabase(schema, sortedTableNames, prompt, apiKey);
+      } catch (error: any) {
+        console.warn("AI Generation failed, falling back to 100% Faker:", error.message);
+        aiSeeds = null; // Forces Faker generation
+      }
     }
 
     const primaryKeyCaches: Record<string, any[]> = {}; // table -> ids

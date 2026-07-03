@@ -80,35 +80,61 @@ export async function generateSeedDataForDatabase(
     systemInstruction += `\n**CONTEXTO ESPECÍFICO DEL USUARIO:**\n${prompt}\n`;
   }
 
-  try {
-    const model = client.getGenerativeModel({
-      model: 'gemini-1.5-flash-latest',
-      systemInstruction: systemInstruction,
-      generationConfig: { temperature: 0.7 }
-    });
-    
-    const response = await model.generateContent("Genera el objeto JSON con los datos realistas para todas las tablas. Recuerda: analiza el nombre de cada columna para generar datos apropiados.");
-    let resultText = response.response.text().trim() || "";
-    if (resultText.startsWith("```json")) resultText = resultText.substring(7);
-    if (resultText.startsWith("```")) resultText = resultText.substring(3);
-    if (resultText.endsWith("```")) resultText = resultText.slice(0, -3);
-    resultText = resultText.trim();
+  const modelsToTry = [
+    { name: 'gemini-1.5-flash', supportsSystemInstruction: true },
+    { name: 'gemini-1.5-pro', supportsSystemInstruction: true },
+    { name: 'gemini-1.0-pro-latest', supportsSystemInstruction: false },
+    { name: 'gemini-pro', supportsSystemInstruction: false }
+  ];
 
-    const data = JSON.parse(resultText);
-    
-    if (typeof data !== 'object' || Array.isArray(data)) {
-      throw new Error("Invalid response structure");
-    }
+  let lastError: any = null;
 
-    const result: Record<string, any[]> = {};
-    for (const tableName of tableNames) {
-      if (data[tableName] && Array.isArray(data[tableName])) {
-        result[tableName] = data[tableName];
+  for (const modelConfig of modelsToTry) {
+    try {
+      let modelOptions: any = {
+        model: modelConfig.name,
+        generationConfig: { temperature: 0.7 }
+      };
+
+      let finalPrompt = "Genera el objeto JSON con los datos realistas para todas las tablas. Recuerda: analiza el nombre de cada columna para generar datos apropiados.";
+
+      if (modelConfig.supportsSystemInstruction) {
+        modelOptions.systemInstruction = systemInstruction;
+      } else {
+        // Fallback for older models: prepend system instructions to the main prompt
+        finalPrompt = `${systemInstruction}\n\nINSTRUCCIÓN PRINCIPAL:\n${finalPrompt}`;
       }
-    }
-    return result;
 
-  } catch (error: any) {
-    throw new Error(`Fallo en la generación de IA: ${error.message}`);
+      const model = client.getGenerativeModel(modelOptions);
+      
+      const response = await model.generateContent(finalPrompt);
+      let resultText = response.response.text().trim() || "";
+      if (resultText.startsWith("```json")) resultText = resultText.substring(7);
+      if (resultText.startsWith("```")) resultText = resultText.substring(3);
+      if (resultText.endsWith("```")) resultText = resultText.slice(0, -3);
+      resultText = resultText.trim();
+
+      const data = JSON.parse(resultText);
+      
+      if (typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error("Invalid response structure");
+      }
+
+      const result: Record<string, any[]> = {};
+      for (const tableName of tableNames) {
+        if (data[tableName] && Array.isArray(data[tableName])) {
+          result[tableName] = data[tableName];
+        }
+      }
+      return result;
+
+    } catch (error: any) {
+      console.warn(`Model ${modelConfig.name} failed:`, error.message);
+      lastError = error;
+      // Continue to the next model in the fallback chain
+    }
   }
+
+  // If all models fail, throw the last error
+  throw new Error(`Fallo en la generación de IA tras probar todos los modelos: ${lastError?.message}`);
 }

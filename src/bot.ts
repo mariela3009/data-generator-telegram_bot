@@ -15,8 +15,7 @@ interface SessionData {
   dbUri?: string;
   schema?: DatabaseSchema;
   configs?: TableGenerationConfig[];
-  awaitingInput?: 'API_KEY' | 'DB_URI' | 'ROWS_COUNT';
-  selectedTableForRows?: string;
+  awaitingInput?: 'API_KEY' | 'DB_URI' | 'CONFIG_MULTIPLE_ROWS';
 }
 
 interface MyContext extends Context {
@@ -88,18 +87,30 @@ bot.on('text', async (ctx) => {
     return;
   }
 
-  if (session.awaitingInput === 'ROWS_COUNT' && session.selectedTableForRows) {
-    const count = parseInt(text);
-    if (isNaN(count) || count < 0) {
-      return ctx.reply('⚠️ Por favor envía un número válido mayor o igual a 0.');
+  if (session.awaitingInput === 'CONFIG_MULTIPLE_ROWS') {
+    if (!session.configs) return ctx.reply('Error: No hay tablas cargadas.');
+    
+    const lines = text.split('\n');
+    let updatedCount = 0;
+    
+    for (const line of lines) {
+      if (!line.includes(':')) continue;
+      const parts = line.split(':');
+      const tName = parts[0].trim();
+      const count = parseInt(parts[1].trim());
+      
+      if (!isNaN(count) && count >= 0) {
+        const config = session.configs.find(c => c.tableName === tName);
+        if (config) {
+          config.recordCount = count;
+          config.selected = count > 0;
+          updatedCount++;
+        }
+      }
     }
-    const config = session.configs?.find(c => c.tableName === session.selectedTableForRows);
-    if (config) {
-      config.recordCount = count;
-      ctx.reply(`✅ Tabla ${session.selectedTableForRows} configurada a ${count} registros.`);
-    }
+    
     session.awaitingInput = undefined;
-    session.selectedTableForRows = undefined;
+    await ctx.reply(`✅ Se han actualizado ${updatedCount} tablas correctamente.`);
     showMainMenu(ctx);
     return;
   }
@@ -108,21 +119,15 @@ bot.on('text', async (ctx) => {
 bot.action('config_rows', (ctx) => {
   if (!ctx.session.configs) return ctx.answerCbQuery('Primero conecta tu base de datos.');
   
-  const buttons = ctx.session.configs.map(c => [
-    Markup.button.callback(`✏️ ${c.tableName} (${c.recordCount} filas)`, `set_rows_${c.tableName}`)
-  ]);
+  ctx.session.awaitingInput = 'CONFIG_MULTIPLE_ROWS';
   
-  buttons.push([Markup.button.callback('⬅️ Volver al menú', 'show_menu')]);
+  let template = "Copia, edita y envía este mensaje para configurar la cantidad de registros por tabla. (Coloca 0 si no quieres generar datos para esa tabla):\n\n```\n";
+  for (const config of ctx.session.configs) {
+    template += `${config.tableName}: ${config.recordCount}\n`;
+  }
+  template += "```";
   
-  ctx.editMessageText('Selecciona una tabla para cambiar la cantidad de registros a generar:', Markup.inlineKeyboard(buttons));
-  ctx.answerCbQuery();
-});
-
-bot.action(/set_rows_(.+)/, (ctx) => {
-  const tableName = ctx.match[1];
-  ctx.session.awaitingInput = 'ROWS_COUNT';
-  ctx.session.selectedTableForRows = tableName;
-  ctx.reply(`¿Cuántos registros quieres generar para la tabla "${tableName}"?\n(Envía un número por chat)`);
+  ctx.editMessageText(template, { parse_mode: 'Markdown' });
   ctx.answerCbQuery();
 });
 

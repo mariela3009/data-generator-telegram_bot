@@ -24,7 +24,8 @@ export class DataGenerator {
     schema: DatabaseSchema,
     configs: TableGenerationConfig[],
     useAi: boolean = false,
-    prompt: string = ""
+    prompt: string = "",
+    apiKey: string = ""
   ): Promise<Record<string, GeneratedData>> {
     const results: Record<string, GeneratedData> = {};
     const selectedConfigs = configs.filter(c => c.selected && c.recordCount > 0);
@@ -39,13 +40,9 @@ export class DataGenerator {
     let aiSeeds: Record<string, any[]> | null = null;
 
     if (useAi) {
-      try {
-        console.log("Generating AI Seeds...");
-        aiSeeds = await generateSeedDataForDatabase(schema, sortedTableNames, prompt);
-      } catch (error) {
-        console.warn("AI Generation failed, falling back to Faker", error);
-        aiSeeds = null;
-      }
+      console.log("Generating AI Seeds...");
+      // This will throw if AI fails, which will be caught by the bot route handler
+      aiSeeds = await generateSeedDataForDatabase(schema, sortedTableNames, prompt, apiKey);
     }
 
     const primaryKeyCaches: Record<string, any[]> = {}; // table -> ids

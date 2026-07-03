@@ -3,11 +3,13 @@ import { DatabaseSchema, TableSchema } from '../schemas';
 
 let aiClient: GoogleGenerativeAI | null = null;
 
-export function getAiClient(): GoogleGenerativeAI | null {
+export function getAiClient(apiKey?: string): GoogleGenerativeAI | null {
   if (aiClient) return aiClient;
 
   // Read API Key from process.env (injected by bot.ts)
-  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    apiKey = process.env.GEMINI_API_KEY;
+  }
 
   if (!apiKey) {
     return null;
@@ -26,11 +28,12 @@ export async function generateSeedDataForDatabase(
   schema: DatabaseSchema,
   tableNames: string[],
   prompt?: string,
+  apiKey?: string,
   seedSize: number = 8
 ): Promise<Record<string, any[]> | null> {
-  const client = getAiClient();
+  const client = getAiClient(apiKey);
   if (!client) {
-    throw new Error("Gemini API Client not configured. Please set dataGenerator.geminiApiKey in settings.");
+    throw new Error("Gemini API Key is missing. Please set it in your environment or session.");
   }
 
   const selectedTables = schema.tables.filter(t => tableNames.includes(t.name));

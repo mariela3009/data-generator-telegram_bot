@@ -139,6 +139,25 @@ const TYPE_MAPPINGS: Record<string, string> = {
 };
 
 export function getFakerMethodForColumn(fake: Faker, columnName: string, dataType: string, tableName: string = ""): () => any {
+  const isArray = dataType.toUpperCase().includes('ARRAY') || dataType.includes('[]');
+  const baseDataType = dataType.replace(/ARRAY|\[|\]/ig, '').trim() || 'VARCHAR';
+  
+  const generator = _getGenerator(fake, columnName, baseDataType, tableName);
+  
+  if (isArray) {
+    return () => {
+      const count = fake.number.int({ min: 1, max: 4 });
+      const arr = [];
+      for (let i=0; i<count; i++) {
+        arr.push(generator());
+      }
+      return arr;
+    };
+  }
+  return generator;
+}
+
+function _getGenerator(fake: Faker, columnName: string, dataType: string, tableName: string): () => any {
   const colLower = columnName.toLowerCase().trim();
   const tableLower = tableName.toLowerCase().trim();
 

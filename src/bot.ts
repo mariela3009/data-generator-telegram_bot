@@ -31,9 +31,9 @@ bot.start((ctx) => {
   ctx.reply(
     `🤖 ¡Hola! Soy el Bot de Data Generator.\n\n` +
     `Puedo analizar tu base de datos y generar datos sintéticos realistas usando Inteligencia Artificial (Google Gemini).\n\n` +
-    `👉 Para empezar, por favor envíame tu clave de API de Google Gemini (API Key) para poder conectarme a la IA.`
+    `👉 Para empezar, por favor envíame la cadena de conexión de tu base de datos (ej. postgres://usuario:pass@host/db o mysql://usuario:pass@host/db)`
   );
-  ctx.session.awaitingInput = 'API_KEY';
+  ctx.session.awaitingInput = 'DB_URI';
 });
 
 bot.command('menu', (ctx) => {
@@ -43,12 +43,6 @@ bot.command('menu', (ctx) => {
 bot.on('text', async (ctx) => {
   const text = ctx.message.text.trim();
   const session = ctx.session;
-
-  if (session.awaitingInput === 'API_KEY') {
-    session.geminiApiKey = text;
-    session.awaitingInput = 'DB_URI';
-    return ctx.reply('✅ API Key guardada en esta sesión.\n\nAhora, por favor envíame la cadena de conexión de tu base de datos (ej. postgres://usuario:pass@host/db o mysql://usuario:pass@host/db)');
-  }
 
   if (session.awaitingInput === 'DB_URI') {
     if (!text.startsWith('postgres://') && !text.startsWith('postgresql://') && !text.startsWith('mysql://')) {
@@ -171,7 +165,7 @@ function showMainMenu(ctx: MyContext) {
 
 async function handleGeneration(ctx: MyContext, mode: 'sql' | 'direct') {
   const session = ctx.session;
-  if (!session.schema || !session.configs || !session.dbUri || !session.geminiApiKey) {
+  if (!session.schema || !session.configs || !session.dbUri) {
     return ctx.answerCbQuery('Faltan configuraciones.');
   }
 
@@ -179,8 +173,6 @@ async function handleGeneration(ctx: MyContext, mode: 'sql' | 'direct') {
   ctx.answerCbQuery();
 
   try {
-    process.env.GEMINI_API_KEY = session.geminiApiKey; // Inject for the core logic
-
     const generator = new DataGenerator('es_ES');
     const generatedData = await generator.generate(session.schema, session.configs, true, "");
 

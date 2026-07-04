@@ -114,6 +114,13 @@ bot.on('text', async (ctx) => {
     showMainMenu(ctx);
     return;
   }
+
+  // Fallback para cualquier otro texto si no está esperando input
+  if (!session.dbUri && !session.awaitingInput) {
+    return ctx.reply('👋 ¡Hola! Para comenzar a usar el Data Generator, por favor escribe /start');
+  } else if (!session.awaitingInput) {
+    return ctx.reply('⚠️ No entendí ese comando. Usa el menú para navegar o /start para reiniciar.');
+  }
 });
 
 bot.action('config_rows', (ctx) => {

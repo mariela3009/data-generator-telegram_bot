@@ -8,6 +8,7 @@ export interface ColumnSchema {
   foreignKey?: { table: string; column: string } | null;
   maxLength?: number | null;
   maxId?: number;
+  enumValues?: string[];
 }
 
 export interface TableSchema {

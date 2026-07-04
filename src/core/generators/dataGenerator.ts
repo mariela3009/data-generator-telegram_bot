@@ -112,6 +112,9 @@ export class DataGenerator {
         }
         return () => 1; // Fallback
       }
+      if (col.enumValues && col.enumValues.length > 0) {
+        return () => this.fake.helpers.arrayElement(col.enumValues!);
+      }
       return getFakerMethodForColumn(this.fake, col.name, col.dataType, tableSchema.name);
     });
 

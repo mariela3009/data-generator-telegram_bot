@@ -44,6 +44,18 @@ export class PostgreSQLConnector implements BaseConnector {
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
     `);
 
+    // Fetch all enums
+    const enumsRes = await this.client.query(`
+      SELECT t.typname, e.enumlabel 
+      FROM pg_enum e 
+      JOIN pg_type t ON e.enumtypid = t.oid
+    `);
+    const enumsMap: Record<string, string[]> = {};
+    for (const row of enumsRes.rows) {
+      if (!enumsMap[row.typname]) enumsMap[row.typname] = [];
+      enumsMap[row.typname].push(row.enumlabel);
+    }
+
     const tables = tablesRes.rows as { table_name: string }[];
     const tableSchemas: TableSchema[] = [];
 
@@ -51,7 +63,7 @@ export class PostgreSQLConnector implements BaseConnector {
       const tableName = t.table_name;
       
       const colsRes = await this.client.query(`
-        SELECT column_name, data_type, is_nullable, character_maximum_length, column_default
+        SELECT column_name, data_type, is_nullable, character_maximum_length, column_default, udt_name
         FROM information_schema.columns 
         WHERE table_schema = 'public' AND table_name = $1
       `, [tableName]);
@@ -69,15 +81,24 @@ export class PostgreSQLConnector implements BaseConnector {
       `, [tableName]);
       const primaryKeys = pkRes.rows.map((r: any) => r.column_name);
 
-      const columns: ColumnSchema[] = colsRes.rows.map((c: any) => ({
-        name: c.column_name,
-        dataType: c.data_type,
-        isNullable: c.is_nullable === 'YES',
-        isPrimaryKey: primaryKeys.includes(c.column_name),
-        isUnique: false, // For brevity
-        defaultValue: c.column_default,
-        maxLength: c.character_maximum_length
-      }));
+      const columns: ColumnSchema[] = colsRes.rows.map((c: any) => {
+        let dataType = c.data_type;
+        let enumValues;
+        if (dataType === 'USER-DEFINED') {
+          enumValues = enumsMap[c.udt_name];
+          if (enumValues) dataType = 'ENUM';
+        }
+        return {
+          name: c.column_name,
+          dataType: dataType,
+          isNullable: c.is_nullable === 'YES',
+          isPrimaryKey: primaryKeys.includes(c.column_name),
+          isUnique: false, // For brevity
+          defaultValue: c.column_default,
+          maxLength: c.character_maximum_length,
+          enumValues: enumValues
+        };
+      });
 
       for (const pkCol of primaryKeys) {
         try {

@@ -45,20 +45,30 @@ export class MySQLConnector implements BaseConnector {
       const tableName = t.table_name;
       
       const [colsRow] = await this.connection.execute(`
-        SELECT column_name, data_type, is_nullable, character_maximum_length, column_default, column_key
+        SELECT column_name, data_type, column_type, is_nullable, character_maximum_length, column_default, column_key
         FROM information_schema.columns 
         WHERE table_schema = ? AND table_name = ?
       `, [this.dbName, tableName]);
 
-      const columns: ColumnSchema[] = (colsRow as any[]).map(c => ({
-        name: c.column_name,
-        dataType: c.data_type,
-        isNullable: c.is_nullable === 'YES',
-        isPrimaryKey: c.column_key === 'PRI',
-        isUnique: c.column_key === 'UNI',
-        defaultValue: c.column_default,
-        maxLength: c.character_maximum_length
-      }));
+      const columns: ColumnSchema[] = (colsRow as any[]).map(c => {
+         let enumValues;
+         if (c.data_type === 'enum') {
+             const match = c.column_type.match(/^enum\((.*)\)$/);
+             if (match) {
+                 enumValues = match[1].split(',').map((s:string) => s.replace(/^'|'$/g, ''));
+             }
+         }
+         return {
+          name: c.column_name,
+          dataType: c.data_type,
+          isNullable: c.is_nullable === 'YES',
+          isPrimaryKey: c.column_key === 'PRI',
+          isUnique: c.column_key === 'UNI',
+          defaultValue: c.column_default,
+          maxLength: c.character_maximum_length,
+          enumValues: enumValues
+         };
+      });
 
       // Find primary keys
       const primaryKeys = columns.filter(c => c.isPrimaryKey).map(c => c.name);
@@ -67,9 +77,12 @@ export class MySQLConnector implements BaseConnector {
         try {
           const [maxRow] = await this.connection.execute(`SELECT MAX(${pkCol}) as m FROM ${tableName}`);
           const val = (maxRow as any)[0].m;
-          if (typeof val === 'number') {
-            const col = columns.find(c => c.name === pkCol);
-            if (col) col.maxId = val;
+          if (val !== null && val !== undefined) {
+            const parsedVal = parseInt(val, 10);
+            if (!isNaN(parsedVal)) {
+              const col = columns.find(c => c.name === pkCol);
+              if (col) col.maxId = parsedVal;
+            }
           }
         } catch(e) {}
       }
